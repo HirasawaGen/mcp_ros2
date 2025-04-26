@@ -1,7 +1,9 @@
 This project is used to let LLM control the ros2 robot by using MCP
 
 like this:
+
 ![locate_tool](.assets/locate_tool.png)
+
 ![move_tool](.assets/move_tool.png)
 
 After using the `move` tool, the robot will leave the original position (the coordinate orgin). like this:
