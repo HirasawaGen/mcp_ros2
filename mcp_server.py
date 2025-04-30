@@ -1,6 +1,8 @@
 import json
 import time
 from math import asin
+from contextlib import AbstractContextManager as ContextManager
+from typing import Tuple, Dict
 
 import cv2
 import numpy as np
@@ -64,6 +66,7 @@ def save_image(path: str) -> bool:
     :param path: The path to save the image.
     :return: True if the image is saved successfully, False otherwise.
     """
+    ros2_msg_sub: ContextManager[Tuple[bool, np.ndarray]]
     with ros2_msg_sub(
         Image,
         '/camera/image_raw',
@@ -83,6 +86,7 @@ def locate_bot():
     you will know where th bot is by call this tool.
     :return: a dictionary containing the linear_x, linear_y, and angular_z. or empty dict if failed.
     """
+    ros2_msg_sub: ContextManager[Tuple[bool, Dict]]
     with ros2_msg_sub(
         TFMessage,
         '/tf',
@@ -93,9 +97,9 @@ def locate_bot():
         },
         qos_profile=qos_profile_sensor_data,
         time_to_wait=10.0
-    ) as (success, twist):
+    ) as (success, pose):
         if not success: return {}
-        return twist
+        return pose
 
 
 if __name__ == '__main__':
