@@ -21,6 +21,7 @@ class McpServerTestBase(TestCase):
     don't laugh at my stupid codes. QAQ.
     btw, this code is almostly copied from the official mcp client example.
     So I don't want to comment it, NOT BECAUSE I'M LAZY!
+    TODO: If error in response, raise an exception.
     '''
     async def connect_to_server(self):
         self.session: Optional[ClientSession] = None
@@ -34,17 +35,7 @@ class McpServerTestBase(TestCase):
                 "run",
                 "mcp_server.py"
             ],
-            env = {
-                "SHELL": os.environ["SHELL"],
-                "PWD": os.environ["PWD"],
-                "LOGNAME": os.environ["LOGNAME"],
-                "HOME": os.environ["HOME"],
-                "USERNAME": os.environ["USERNAME"],
-                "PYTHONPATH": os.environ["PYTHONPATH"],
-                "PATH": os.environ["PATH"],
-                "USER": os.environ["USER"],
-                "LD_LIBRARY_PATH": os.environ["LD_LIBRARY_PATH"],
-            },
+            env = os.environ.copy(),
         )
         stdio_transport = await self.exit_stack.enter_async_context(stdio_client(server_params))
         self.stdio, self.write = stdio_transport
@@ -71,10 +62,10 @@ class McpServerTestBase(TestCase):
         asyncio.run(self.run_tools("locate_bot", {}))
     
     def test_move_forward(self):
-        asyncio.run(self.run_tools("move", {"linear_x": 0.5, "angular_z": 0.0, "seconds": 1}))
+        asyncio.run(self.run_tools("move", {"linear_x": 0.5, "angular_z": 0.0, "seconds": 5}))
 
     def test_move_backward(self):
-        asyncio.run(self.run_tools("move", {"linear_x": -0.5, "angular_z": 0.0, "seconds": 1}))
+        asyncio.run(self.run_tools("move", {"linear_x": -0.5, "angular_z": 0.0, "seconds": 5}))
     
     def test_save_image(self):
         asyncio.run(self.run_tools("save_image", {"path": "./images/test.png"}))

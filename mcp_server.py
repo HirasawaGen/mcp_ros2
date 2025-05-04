@@ -12,30 +12,17 @@ from rclpy.qos import qos_profile_sensor_data
 from rclpy.wait_for_message import wait_for_message
 
 from mcp.server.fastmcp import FastMCP
+
 from sensor_msgs.msg import Image
 from tf2_msgs.msg import TFMessage
+from geometry_msgs.msg import Twist
 
-from utils import run_command, ros2_msg_sub
+from utils import ros2_msg_pub, ros2_msg_sub
 
 
 mcp = FastMCP('Ros2 MCP Server')
 
 
-@run_command('ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist {}')
-def cmd_vel(linear_x: float, angular_z: float) -> str:
-    msg = {
-        'linear': {
-            'x': float(linear_x),
-            'y': 0.0,
-            'z': 0.0
-        },
-        'angular': {
-            'x': 0.0,
-            'y': 0.0,
-            'z': float(angular_z)
-        }
-    }
-    return json.dumps(msg, separators=(',', ':'), indent=None)
 
 
 @mcp.tool()
@@ -54,9 +41,22 @@ def move(linear_x: float, angular_z: float, seconds: float) -> None:
     :param seconds: the duration of the action.
     :return: None This function will return Nothing whatever success or not.
     """
-    cmd_vel(linear_x, angular_z)
-    time.sleep(seconds)
-    cmd_vel(0, 0)
+    pose2twist = lambda linear_x, angular_z: {
+        'linear': {
+            'x': float(linear_x),
+            'y': 0.0,
+            'z': 0.0
+        },
+        'angular': {
+            'x': 0.0,
+            'y': 0.0,
+            'z': float(angular_z)
+        }
+    }
+    ros2_msg_pub(Twist, '/cmd_vel', [
+        pose2twist(linear_x, angular_z),
+        pose2twist(0, 0)
+    ], time_to_wait=seconds)
 
 
 @mcp.tool()
@@ -66,28 +66,26 @@ def save_image(path: str) -> bool:
     :param path: The path to save the image.
     :return: True if the image is saved successfully, False otherwise.
     """
-    ros2_msg_sub: ContextManager[Tuple[bool, np.ndarray]]
-    with ros2_msg_sub(
+    image = ros2_msg_sub(
         Image,
         '/camera/image_raw',
         func = lambda msg: np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, -1),
         qos_profile=qos_profile_sensor_data,
         time_to_wait=10.0
-    ) as (success, image):
-        if not success: return False
-        cv2.imwrite(path, image)
-        return success
+    )
+    if image is None: return False
+    cv2.imwrite(path, image)
+    return True
     
 
 @mcp.tool()
-def locate_bot():
+def locate_bot() -> Dict[str, float]:
     """
     get the current position of the ros2 bot.
     you will know where th bot is by call this tool.
     :return: a dictionary containing the linear_x, linear_y, and angular_z. or empty dict if failed.
     """
-    ros2_msg_sub: ContextManager[Tuple[bool, Dict]]
-    with ros2_msg_sub(
+    pose = ros2_msg_sub(
         TFMessage,
         '/tf',
         func = lambda msg: {
@@ -97,11 +95,10 @@ def locate_bot():
         },
         qos_profile=qos_profile_sensor_data,
         time_to_wait=10.0
-    ) as (success, pose):
-        if not success: return {}
-        return pose
+    )
+    if pose is None: return {}
+    return pose
 
 
 if __name__ == '__main__':
     mcp.run(transport='stdio')
-    rclpy.shutdown()
