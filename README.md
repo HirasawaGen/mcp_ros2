@@ -29,7 +29,7 @@ b.t.w, if U use cline, U should configure `mcp_cline_settings.json` like this:
       "command": "uv",
       "args": [
         "--directory",
-        "/home/ros/mcp_ros2/mcp_ros2/",
+        "/home/<your username>/mcp_ros2/mcp_ros2/",
         "run",
         "mcp_server.py"
       ],
