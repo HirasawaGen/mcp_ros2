@@ -1,19 +1,16 @@
-import json
-import time
 from math import asin
-from contextlib import AbstractContextManager as ContextManager
-from typing import Tuple, Dict
+from typing import List, Dict
 
 import cv2
 import numpy as np
 
-import rclpy
 from rclpy.qos import qos_profile_sensor_data
 from rclpy.wait_for_message import wait_for_message
 
 from mcp.server.fastmcp import FastMCP
 
 from sensor_msgs.msg import Image
+from sensor_msgs.msg import LaserScan
 from tf2_msgs.msg import TFMessage
 from geometry_msgs.msg import Twist
 
@@ -66,7 +63,7 @@ def save_image(path: str) -> bool:
     :param path: The path to save the image.
     :return: True if the image is saved successfully, False otherwise.
     """
-    image = ros2_msg_sub(
+    image: np.ndarray | None = ros2_msg_sub(
         Image,
         '/camera/image_raw',
         func = lambda msg: np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, -1),
@@ -85,7 +82,7 @@ def locate_bot() -> Dict[str, float]:
     you will know where th bot is by call this tool.
     :return: a dictionary containing the linear_x, linear_y, and angular_z. or empty dict if failed.
     """
-    pose = ros2_msg_sub(
+    pose: Dict[str, float] | None = ros2_msg_sub(
         TFMessage,
         '/tf',
         func = lambda msg: {
@@ -98,6 +95,33 @@ def locate_bot() -> Dict[str, float]:
     )
     if pose is None: return {}
     return pose
+
+
+@mcp.tool()
+def collision_detect(threshold: float) -> tuple[str, ...]:
+    """
+    detect the collision between the ros2 bot and the environment.
+    :param threshold: the threshold of the collision detection.
+    :return: a tuple of strings containing the name of directions where the collision is detected.
+    the return value will only contain 8 directions:
+        'straight front', 'right front', 'straight right', 'right back'
+        'straight back', 'left back', 'left front', 'straight left'
+    """
+    threshold = float(threshold)
+    directions = (
+        'straight front', 'right front', 'straight right', 'right back',
+        'straight back', 'left back', 'straight left', 'left front'
+    )
+    ranges: np.ndarray | None = ros2_msg_sub(
+        LaserScan,
+        '/scan',
+        func=lambda msg: msg.ranges,
+        qos_profile=qos_profile_sensor_data,
+        time_to_wait=10.0
+    )
+    if ranges is None: return []
+    ranges = np.array([ranges[i] for i in range(0, 360, 360//8)])
+    return tuple(filter(lambda d: ranges[directions.index(d)] < threshold, directions))
 
 
 if __name__ == '__main__':

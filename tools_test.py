@@ -69,5 +69,8 @@ class McpServerTestBase(TestCase):
     
     def test_save_image(self):
         asyncio.run(self.run_tools("save_image", {"path": "./images/test.png"}))
+        
+    def test_collision_detect(self):
+        asyncio.run(self.run_tools("collision_detect", {"threshold": 0.5}))
     
         

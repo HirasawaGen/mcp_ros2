@@ -23,7 +23,8 @@ from rosidl_parser.definition import BASIC_TYPES
 
 
 def run_command(command_fmt: str):
-    """Decorator to run a command after a function returns a value.
+    """
+    Decorator to run a command after a function returns a value.
     useless temporarily
     :param command_fmt: The command to run, with a placeholder for the function return value.
     """
@@ -46,10 +47,8 @@ def run_command(command_fmt: str):
 @contextmanager
 def ros2_context(args: list = None) -> Generator[None, None, None]:
     rclpy.init(args=args)
-    try:
-        yield
-    finally:
-        rclpy.shutdown()
+    yield
+    rclpy.shutdown()
         
 
 @contextmanager
@@ -71,7 +70,6 @@ ProcessedResultType = TypeVar('ProcessedMsgType')
 def dict2msg(msg_dict: dict, msg_type: Type[MsgType]) -> MsgType:
     '''
     convert a dictionary to a ROS2 message use recursion.
-    useless temporarily
     :param msg_dict: dictionary to convert
     :param msg_type: ROS2 message type to convert to
     :returns: ROS2 message
@@ -102,7 +100,13 @@ def msg2dict(msg: MsgType) -> dict:
         if field_type in BASIC_TYPES:
             msg_dict[field] = getattr(msg, field)
         elif field_type.startswith('sequence<'):
-            msg_dict[field] = [msg2dict(item) for item in value]
+            begin_idx = field_type.find('<')
+            end_idx = field_type.find('>', begin_idx+1)
+            item_type = field_type[begin_idx+1:end_idx]
+            if item_type in BASIC_TYPES:
+                msg_dict[field] = value
+            else:
+                msg_dict[field] = [msg2dict(item) for item in value]
         elif isinstance(value, str):
             msg_dict[field] = value
         else:
